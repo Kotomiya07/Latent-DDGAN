@@ -21,7 +21,6 @@ import yaml
 from ldm.util import instantiate_from_config
 from omegaconf import OmegaConf
 import wandb
-import time
 
 def load_model_from_config(config_path, ckpt):
     print(f"Loading model from {ckpt}")

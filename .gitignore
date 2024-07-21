@@ -8,3 +8,6 @@ __pycache__/
 *.log
 saved_info/
 data/
+wandb/
+autoencoder/weight/
+.ipynb_checkpoints/

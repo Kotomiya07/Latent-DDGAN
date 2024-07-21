@@ -8,6 +8,7 @@ from torchvision.datasets import CIFAR10, STL10
 from .lmdb_datasets import LMDBDataset
 from .lsun import LSUN
 from .stackmnist_data import StackedMNIST, _data_transforms_stacked_mnist
+from .coco import CustomCocoCaptions
 
 
 def create_dataset(args):
@@ -93,5 +94,20 @@ def create_dataset(args):
         ])
         dataset = LMDBDataset(root=args.datadir, name='ffhq',
                               train=True, transform=train_transform)
+
+    elif args.dataset == 'coco_256':
+        train_transform = transforms.Compose([
+            transforms.Resize(args.image_size),
+            transforms.transforms.CenterCrop(256),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ])
+        dataset = CustomCocoCaptions(
+            name="train2017",
+            root=os.path.join(args.datadir, "train2017"),
+            annFile=os.path.join(
+            args.datadir, 'annotations', 'captions_train2017.json'), 
+            transform=train_transform)
 
     return dataset
