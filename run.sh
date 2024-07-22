@@ -68,7 +68,7 @@ if [[ $MODE == train ]]; then
 			--current_resolution 32 --attn_resolution 16 --num_disc_layers 4  \
 			--save_content_every 1 \
 			--AutoEncoder_config ./autoencoder/config/COCO_config.yaml \
-			--AutoEncoder_ckpt ./autoencoder/weight/16x16x4_551.ckpt \
+			--AutoEncoder_ckpt ./autoencoder/weight/vq-f4.ckpt \
 			--scale_factor 60.0 \
 			--sigmoid_learning \
 			--no_lr_decay 
