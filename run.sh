@@ -61,7 +61,7 @@ if [[ $MODE == train ]]; then
 			--no_lr_decay 
 	
 	elif [[ $DATASET == coco_256 ]]; then
-		python3 train_ldgan.py --dataset coco_256 --image_size 256 --exp g12222_128_2block_d4_attn16_nz50_tanh --num_channels 4 --num_channels_dae 128 --ch_mult 1 2 2 2 --num_timesteps 4 \
+		python3 train_ldgan.py --dataset coco_256 --image_size 256 --exp g12222_128_2block_d4_attn16_nz50_vq-f4 --num_channels 4 --num_channels_dae 128 --ch_mult 1 2 2 2 --num_timesteps 4 \
 			--num_res_blocks 3 --batch_size 16 --num_epoch 1000 --ngf 64 --embedding_type positional --use_ema --ema_decay 0.999 --r1_gamma 1. \
 			--nz 50 --z_emb_dim 256 --lr_d 1e-4 --lr_g 2e-4 --lazy_reg 10 --save_content --datadir data/coco/ \
 			--master_port $MASTER_PORT --num_process_per_node $GPUS \
