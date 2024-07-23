@@ -296,6 +296,7 @@ def train(rank, gpu, args):
                         print('epoch {} iteration{}, G Loss: {}, D Loss: {}'.format(
                             epoch, iteration, errG.item(), errD.item()))
                     wandb.log({"iteration:": iteration, "G_loss": errG.item(), "D_loss": errD.item(), "alpha": alpha[epoch], "elapsed_time": elapsed_time / 1000})
+                    start.record()
 
         if not args.no_lr_decay:
 
@@ -507,7 +508,7 @@ if __name__ == '__main__':
     else:
         print('starting in debug mode')
         wandb.init(
-            project="latent-diffusion-gan",
+            project="LDGAN",
             config={
                 "dataset": args.dataset,
                 "image_size": args.image_size,

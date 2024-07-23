@@ -32,7 +32,20 @@ if [[ $MODE == train ]]; then
 			--AutoEncoder_config autoencoder/config/cifar10_16x16x4.yaml \
 			--AutoEncoder_ckpt autoencoder/weight/16x16x4_551.ckpt \
 			--rec_loss \
-			--sigmoid_learning 
+			--sigmoid_learning
+
+	elif [[ $DATASET == coco_256 ]]; then
+		python3 train_ldgan_celeba.py --dataset coco_256 --image_size 256 --exp g12222_128_2block_d4_attn16_nz50 --num_channels 3 --num_channels_dae 128 --ch_mult 1 2 2 2 --num_timesteps 2 \
+			--num_res_blocks 2 --batch_size 8 --num_epoch 500 --ngf 64 --embedding_type positional --use_ema --ema_decay 0.999 --r1_gamma 2. \
+			--nz 100 --z_emb_dim 256 --lr_d 1.0e-4 --lr_g 2e-4 --lazy_reg 10 --save_content --datadir data/coco \
+			--master_port $MASTER_PORT --num_process_per_node $GPUS \
+			--current_resolution 64 --attn_resolution 16 --num_disc_layers 4 --rec_loss \
+			--save_content_every 5 \
+			--AutoEncoder_config ./autoencoder/config/COCO_config.yaml \
+			--AutoEncoder_ckpt ./autoencoder/weight/vq-f4.ckpt \
+			--scale_factor 6.0 \
+			--no_lr_decay \
+			--sigmoid_learning
 
 	elif [[ $DATASET == celeba_256 ]]; then
 		python3 train_ldgan_celeba.py --dataset celeba_256 --image_size 256 --exp g1222_128_2block_d4_attn16_2step_SmL_500ep --num_channels 3 --num_channels_dae 128 --ch_mult 1 2 2 2 --num_timesteps 2 \
@@ -56,19 +69,6 @@ if [[ $MODE == train ]]; then
 			--save_content_every 1 \
 			--AutoEncoder_config ./autoencoder/config/LSUN_config.yaml \
 			--AutoEncoder_ckpt ./autoencoder/weight/LSUN_weight.ckpt \
-			--scale_factor 60.0 \
-			--sigmoid_learning \
-			--no_lr_decay 
-	
-	elif [[ $DATASET == coco_256 ]]; then
-		python3 train_ldgan.py --dataset coco_256 --image_size 256 --exp g12222_128_2block_d4_attn16_nz50_vq-f4 --num_channels 4 --num_channels_dae 128 --ch_mult 1 2 2 2 --num_timesteps 4 \
-			--num_res_blocks 3 --batch_size 16 --num_epoch 1000 --ngf 64 --embedding_type positional --use_ema --ema_decay 0.999 --r1_gamma 1. \
-			--nz 50 --z_emb_dim 256 --lr_d 1e-4 --lr_g 2e-4 --lazy_reg 10 --save_content --datadir data/coco/ \
-			--master_port $MASTER_PORT --num_process_per_node $GPUS \
-			--current_resolution 32 --attn_resolution 16 --num_disc_layers 4  \
-			--save_content_every 1 \
-			--AutoEncoder_config ./autoencoder/config/COCO_config.yaml \
-			--AutoEncoder_ckpt ./autoencoder/weight/vq-f4.ckpt \
 			--scale_factor 60.0 \
 			--sigmoid_learning \
 			--no_lr_decay 

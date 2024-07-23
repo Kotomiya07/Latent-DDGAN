@@ -19,6 +19,7 @@ from utils import init_processes, copy_source, broadcast_params
 import yaml
 from ldm.util import instantiate_from_config
 from omegaconf import OmegaConf
+import wandb
 
 def load_model_from_config_old(config_path, ckpt):
     print(f"Loading model from {ckpt}")
@@ -202,6 +203,10 @@ def train(rank, gpu, args):
     for epoch in range(init_epoch, args.num_epoch + 1):
         train_sampler.set_epoch(epoch)
 
+        start = torch.cuda.Event(enable_timing=True)
+        end = torch.cuda.Event(enable_timing=True)
+        start.record()
+
         for iteration, (x, y) in enumerate(data_loader):
             for p in netD.parameters():
                 p.requires_grad = True
@@ -297,6 +302,9 @@ def train(rank, gpu, args):
             global_step += 1
             if iteration % 100 == 0:
                 if rank == 0:
+                    end.record()
+                    torch.cuda.synchronize()
+                    elapsed_time = start.elapsed_time(end)
                     if args.sigmoid_learning:
                         print('epoch {} iteration{}, G Loss: {}, D Loss: {}, alpha: {}'.format(
                             epoch, iteration, errG.item(), errD.item(), alpha[epoch]))
@@ -306,6 +314,9 @@ def train(rank, gpu, args):
                     else:   
                         print('epoch {} iteration{}, G Loss: {}, D Loss: {}'.format(
                             epoch, iteration, errG.item(), errD.item()))
+                    wandb.log({"elapsed_time": elapsed_time / 1000})
+                    start.record()
+            wandb.log({"iteration:": iteration, "G_loss": errG.item(), "D_loss": errD.item(), "alpha": alpha[epoch]})
 
         if not args.no_lr_decay:
 
@@ -537,5 +548,35 @@ if __name__ == '__main__':
             p.join()
     else:
         print('starting in debug mode')
-
+        wandb.init(
+            project="LDGAN",
+            config={
+                "dataset": args.dataset,
+                "image_size": args.image_size,
+                "channels": args.num_channels,
+                "timesteps": args.num_timesteps,
+                "nz": args.nz,
+                "epochs": args.num_epoch,
+                "ngf": args.ngf,
+                "lr_g": args.lr_g,
+                "lr_d": args.lr_d,
+                "batch_size": args.batch_size,
+                "r1_gamma": args.r1_gamma,
+                "lazy_reg": args.lazy_reg,
+                "use_ema": args.use_ema,
+                "ema_decay": args.ema_decay,
+                "no_lr_decay": args.no_lr_decay,
+                "use_pytorch_wavelet": args.use_pytorch_wavelet,
+                "rec_loss": args.rec_loss,
+                "net_type": args.net_type,
+                "num_disc_layers": args.num_disc_layers,
+                "no_use_fbn": args.no_use_fbn,
+                "no_use_freq": args.no_use_freq,
+                "no_use_residual": args.no_use_residual,
+                "scale_factor": args.scale_factor,
+                "AutoEncoder_config": args.AutoEncoder_config,
+                "AutoEncoder_ckpt": args.AutoEncoder_ckpt,
+                "sigmoid_learning": args.sigmoid_learning,
+            }
+        )
         init_processes(0, size, train, args)
