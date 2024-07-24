@@ -39,7 +39,7 @@ if [[ $MODE == train ]]; then
 			--num_res_blocks 2 --batch_size 8 --num_epoch 500 --ngf 64 --embedding_type positional --use_ema --ema_decay 0.999 --r1_gamma 2. \
 			--nz 100 --z_emb_dim 256 --lr_d 1.0e-4 --lr_g 2e-4 --lazy_reg 10 --save_content --datadir data/coco \
 			--master_port $MASTER_PORT --num_process_per_node $GPUS \
-			--current_resolution 64 --attn_resolution 16 --num_disc_layers 4 --rec_loss \
+			--current_resolution 256 --attn_resolution 16 --num_disc_layers 4 --rec_loss \
 			--save_content_every 1 \
 			--AutoEncoder_config ./autoencoder/config/COCO_config.yaml \
 			--AutoEncoder_ckpt ./autoencoder/weight/kl-f4.ckpt \
@@ -52,7 +52,7 @@ if [[ $MODE == train ]]; then
 			--num_res_blocks 2 --batch_size 32 --num_epoch 500 --ngf 64 --embedding_type positional --use_ema --ema_decay 0.999 --r1_gamma 2. \
 			--nz 100 --z_emb_dim 256 --lr_d 1.0e-4 --lr_g 2e-4 --lazy_reg 10 --save_content --datadir data/coco \
 			--master_port $MASTER_PORT --num_process_per_node $GPUS \
-			--current_resolution 64 --attn_resolution 16 --num_disc_layers 4 --rec_loss \
+			--current_resolution 128 --attn_resolution 16 --num_disc_layers 4 --rec_loss \
 			--save_content_every 1 \
 			--AutoEncoder_config ./autoencoder/config/COCO_config.yaml \
 			--AutoEncoder_ckpt ./autoencoder/weight/kl-f4.ckpt \
@@ -62,7 +62,7 @@ if [[ $MODE == train ]]; then
 	
 	elif [[ $DATASET == coco_64 ]]; then
 		python3 train_ldgan_lab.py --dataset coco --image_size 64 --exp g1222_128_2block_d4_attn16_nz50_64 --num_channels 3 --num_channels_dae 128 --ch_mult 1 2 2 2 --num_timesteps 2 \
-			--num_res_blocks 2 --batch_size 32 --num_epoch 500 --ngf 64 --embedding_type positional --use_ema --ema_decay 0.999 --r1_gamma 2. \
+			--num_res_blocks 2 --batch_size 64 --num_epoch 500 --ngf 64 --embedding_type positional --use_ema --ema_decay 0.999 --r1_gamma 2. \
 			--nz 100 --z_emb_dim 256 --lr_d 1.0e-4 --lr_g 2e-4 --lazy_reg 10 --save_content --datadir data/coco \
 			--master_port $MASTER_PORT --num_process_per_node $GPUS \
 			--current_resolution 64 --attn_resolution 16 --num_disc_layers 4 --rec_loss \
