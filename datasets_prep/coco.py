@@ -9,7 +9,7 @@ def num_samples(dataset, train):
         raise NotImplementedError('dataset %s is unknown' % dataset)
 
 class CustomCocoCaptions(CocoCaptions):
-    def __init__(self, name, root, annFile, train=True, transform=None, target_transform=None, select_caption='ramdom'):
+    def __init__(self, name, root, annFile, train=True, transform=None, target_transform=None, select_caption='random'):
         super(CustomCocoCaptions, self).__init__(root, annFile, transform=transform, target_transform=target_transform)
         self.select_caption = select_caption
         self.name = name
