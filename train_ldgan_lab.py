@@ -128,7 +128,7 @@ def train(rank, gpu, args):
     config_path = args.AutoEncoder_config 
     ckpt_path = args.AutoEncoder_ckpt 
     
-    if args.dataset in ['cifar10', 'stl10', 'coco_256']:
+    if args.dataset in ['cifar10', 'stl10', 'coco']:
 
         with open(config_path, 'r') as file:
             config = yaml.safe_load(file)
@@ -214,6 +214,7 @@ def train(rank, gpu, args):
             #assert -1 <= real_data.min() < 0
             #assert 0 < real_data.max() <= 1
             """################# End change: Encoder #################"""
+
             # sample t
             t = torch.randint(0, args.num_timesteps,
                               (real_data.size(0),), device=device)

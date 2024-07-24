@@ -24,18 +24,4 @@ model:
       num_res_blocks: 2
       attn_resolutions: []
       dropout: 0.0
-data:
-  target: main.DataModuleFromConfig
-  params:
-    batch_size: 10
-    wrap: true
-    train:
-      target: ldm.data.openimages.FullOpenImagesTrain
-      params:
-        size: 384
-        crop_size: 256
-    validation:
-      target: ldm.data.openimages.FullOpenImagesValidation
-      params:
-        size: 384
-        crop_size: 256
+

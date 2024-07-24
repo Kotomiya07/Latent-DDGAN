@@ -95,10 +95,10 @@ def create_dataset(args):
         dataset = LMDBDataset(root=args.datadir, name='ffhq',
                               train=True, transform=train_transform)
 
-    elif args.dataset == 'coco_256':
+    elif args.dataset == 'coco':
         train_transform = transforms.Compose([
-            transforms.Resize(args.image_size),
-            transforms.transforms.CenterCrop(256),
+            transforms.Resize(args.current_resolution),
+            transforms.transforms.CenterCrop(args.current_resolution),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
