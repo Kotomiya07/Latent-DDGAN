@@ -188,12 +188,22 @@ def train(rank, gpu, args):
     if args.dataset in ['cifar10'] and args.class_conditional:
         class_embedding = nn.Embedding(10, nz).to(device)
 
+    nrow = 2
+    if args.batch_size >= 5:
+        nrow = 3
+    if args.batch_size >= 10:
+        nrow = 10
+
     for epoch in range(init_epoch, args.num_epoch + 1):
         #train_sampler.set_epoch(epoch)
         
         start = torch.cuda.Event(enable_timing=True)
         end = torch.cuda.Event(enable_timing=True)
         start.record()
+
+        start_epoch = torch.cuda.Event(enable_timing=True)
+        end_epoch = torch.cuda.Event(enable_timing=True)
+        start_epoch.record()
         for iteration, (x, y) in enumerate(data_loader):
             for p in netD.parameters():
                 p.requires_grad = True
@@ -227,6 +237,29 @@ def train(rank, gpu, args):
             x_t, x_tp1 = q_sample_pairs(coeff, real_data, t)
             x_t.requires_grad = True
 
+            """################# Save Sample #################"""
+            if iteration % 10 == 0:
+                print(f"Epoch: {epoch}, Iteration: {iteration}")
+            if iteration % 50 == 0:
+                x_t_1 = torch.randn_like(posterior.sample())
+                if args.dataset in ['cifar10'] and args.class_conditional:
+                    y = torch.arange(0, 10).repeat(x_t_1.size(0)//10 + 1)[:x_t_1.size(0)].to(device)
+                    y_emb = class_embedding(y)
+                    fake_sample = sample_from_model(
+                        pos_coeff, netG, args.num_timesteps, x_t_1, T, args, class_emb=y_emb)
+                else:
+                    fake_sample = sample_from_model(
+                        pos_coeff, netG, args.num_timesteps, x_t_1, T, args)
+                fake_sample *= args.scale_factor #300
+                with torch.no_grad():
+                    fake_sample = AutoEncoder.decode(fake_sample)
+
+                #rec_data = (torch.clamp(rec_data, -1, 1) + 1) / 2
+                fake_sample = (torch.clamp(fake_sample, -1, 1) + 1) / 2  # 0-1
+                torchvision.utils.save_image(fake_sample, os.path.join(
+                    exp_path, 'sample_discrete_epoch_{}.png'.format(epoch)), nrow=nrow)
+
+
             # train with real
             D_real = netD(x_t, t, x_tp1.detach()).view(-1)
             errD_real = F.softplus(-D_real).mean()
@@ -242,7 +275,7 @@ def train(rank, gpu, args):
             # train with fake
             latent_z = torch.randn(batch_size, nz, device=device)
             if args.dataset in ['cifar10'] and args.class_conditional:
-                x_0_predict = netG(x_tp1.detach(), t, torch.cat([latent_z, y_emb], dim=1))
+                x_0_predict = netG(x_tp1.detach(), t, torch.cat([latent_z, y_emb], dim=1).detach())
             else:
                 x_0_predict = netG(x_tp1.detach(), t, latent_z)
             x_pos_sample = sample_posterior(pos_coeff, x_0_predict, x_tp1, t)
@@ -270,7 +303,7 @@ def train(rank, gpu, args):
 
             latent_z = torch.randn(batch_size, nz, device=device)
             if args.dataset in ['cifar10'] and args.class_conditional:
-                x_0_predict = netG(x_tp1.detach(), t, torch.cat([latent_z, y_emb], dim=1))
+                x_0_predict = netG(x_tp1.detach(), t, torch.cat([latent_z, y_emb], dim=1).detach())
             else:
                 x_0_predict = netG(x_tp1.detach(), t, latent_z)
             x_pos_sample = sample_posterior(pos_coeff, x_0_predict, x_tp1, t)
@@ -307,7 +340,9 @@ def train(rank, gpu, args):
                     else:   
                         print('epoch {} iteration{}, G Loss: {}, D Loss: {}'.format(
                             epoch, iteration, errG.item(), errD.item()))
-                    wandb.log({"iteration:": iteration, "G_loss": errG.item(), "D_loss": errD.item(), "alpha": alpha[epoch], "elapsed_time": elapsed_time / 1000})
+                    wandb.log({"G_loss/100iter": errG.item(), "D_loss/iter": errD.item(), "time/100iter": elapsed_time / 1000})
+                    start = torch.cuda.Event(enable_timing=True)
+                    end = torch.cuda.Event(enable_timing=True)
                     start.record()
 
         if not args.no_lr_decay:
@@ -316,6 +351,10 @@ def train(rank, gpu, args):
             schedulerD.step()
 
         if rank == 0:
+            end_epoch.record()
+            torch.cuda.synchronize()
+            time_per_epoch = start_epoch.elapsed_time(end_epoch)
+            wandb.log({"G_loss": errG.item(), "D_loss": errD.item(), "alpha": alpha[epoch], "time/epoch": time_per_epoch / 1000})
             ########################################
             x_t_1 = torch.randn_like(posterior.sample())
             if args.dataset in ['cifar10'] and args.class_conditional:
@@ -340,9 +379,9 @@ def train(rank, gpu, args):
             """############## END HERE: DECODER ##############"""
 
             torchvision.utils.save_image(fake_sample, os.path.join(
-                exp_path, 'sample_discrete_epoch_{}.png'.format(epoch)))
+                exp_path, 'sample_discrete_epoch_{}.png'.format(epoch)), nrow=nrow)
             torchvision.utils.save_image(
-                real_data, os.path.join(exp_path, 'real_data.png'))
+                real_data, os.path.join(exp_path, 'real_data.png'),nrow=nrow)
 
             if args.save_content:
                 if epoch % args.save_content_every == 0:

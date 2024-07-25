@@ -239,7 +239,8 @@ def train(rank, gpu, args):
             x_t, x_tp1 = q_sample_pairs(coeff, real_data, t)
             x_t.requires_grad = True
 
-            print(f"Epoch: {epoch}, Iteration: {iteration}")
+            if iteration % 10 == 0:
+                print(f"Epoch: {epoch}, Iteration: {iteration}")
             if iteration % 50 == 0:
                 x_t_1 = torch.randn_like(posterior)
                 fake_sample = sample_from_model(
