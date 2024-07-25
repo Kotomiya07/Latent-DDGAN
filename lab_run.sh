@@ -34,6 +34,20 @@ if [[ $MODE == train ]]; then
 			--rec_loss \
 			--sigmoid_learning
 
+	elif [[ $DATASET == cifar10_cond ]]; then
+		python3 train_ldgan_lab.py --dataset cifar10 --exp atn32_g122_2block_d3_Recloss_SmL_128 --num_channels 4 --num_channels_dae 128 --num_timesteps 4 \
+			--num_res_blocks 2 --batch_size 256 --num_epoch 2000 --ngf 64 --nz 100 --z_emb_dim 256 --n_mlp 4 --embedding_type positional \
+			--use_ema --ema_decay 0.9999 --r1_gamma 0.02 --lr_d 1.25e-4 --lr_g 1.6e-4 --lazy_reg 15 \
+			--ch_mult 1 2 2 --save_content --datadir ./data/cifar-10 \
+			--master_port $MASTER_PORT --num_process_per_node $GPUS --save_ckpt_every 25 \
+			--current_resolution 16 --attn_resolutions 32 --num_disc_layers 3  --scale_factor 105.0 \
+			--no_lr_decay \
+			--AutoEncoder_config autoencoder/config/cifar10_16x16x4.yaml \
+			--AutoEncoder_ckpt autoencoder/weight/16x16x4_551.ckpt \
+			--rec_loss \
+			--sigmoid_learning \
+			--class_conditional
+
 	elif [[ $DATASET == coco_256 ]]; then
 		python3 train_ldgan_lab.py --dataset coco --image_size 256 --exp g1222_128_2block_d4_attn16_nz50_256 --num_channels 3 --num_channels_dae 128 --ch_mult 1 2 2 2 --num_timesteps 2 \
 			--num_res_blocks 2 --batch_size 8 --num_epoch 500 --ngf 64 --embedding_type positional --use_ema --ema_decay 0.999 --r1_gamma 2. \
