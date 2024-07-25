@@ -71,10 +71,9 @@ def train(rank, gpu, args):
     #                                                                rank=rank)
     data_loader = torch.utils.data.DataLoader(dataset,
                                               batch_size=batch_size,
-                                              shuffle=True,
+                                              shuffle=False,
                                               num_workers=args.num_workers,
                                               pin_memory=True,
-                                              #sampler=train_sampler,
                                               drop_last=True)
     args.ori_image_size = args.image_size
     args.image_size = args.current_resolution
@@ -186,6 +185,7 @@ def train(rank, gpu, args):
     beta = np.linspace(-gamma, gamma, args.num_epoch+1)
     alpha = 1 - 1 / (1+np.exp(-beta))
 
+    print(netG)
     for epoch in range(init_epoch, args.num_epoch + 1):
         #train_sampler.set_epoch(epoch)
         
@@ -206,7 +206,7 @@ def train(rank, gpu, args):
             """################# Change here: Encoder #################"""
             with torch.no_grad():
                 posterior = AutoEncoder.encode(x0)
-                real_data = posterior.sample().detach()
+                real_data = posterior[0].detach()
             #print("MIN:{}, MAX:{}".format(real_data.min(), real_data.max()))
             real_data = real_data / args.scale_factor #300.0  # [-1, 1]
             
@@ -214,7 +214,6 @@ def train(rank, gpu, args):
             #assert -1 <= real_data.min() < 0
             #assert 0 < real_data.max() <= 1
             """################# End change: Encoder #################"""
-
             # sample t
             t = torch.randint(0, args.num_timesteps,
                               (real_data.size(0),), device=device)

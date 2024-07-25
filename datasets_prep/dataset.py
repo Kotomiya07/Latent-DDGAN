@@ -97,8 +97,8 @@ def create_dataset(args):
 
     elif args.dataset == 'coco':
         train_transform = transforms.Compose([
-            transforms.Resize(args.current_resolution),
-            transforms.transforms.CenterCrop(args.current_resolution),
+            transforms.Resize(args.image_size),
+            transforms.transforms.CenterCrop(args.image_size),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
@@ -107,7 +107,7 @@ def create_dataset(args):
             name="train2017",
             root=os.path.join(args.datadir, "train2017"),
             annFile=os.path.join(
-            args.datadir, 'annotations', 'captions_train2017.json'), 
+            args.datadir, 'annotations', 'captions_train2017.json'),
             transform=train_transform)
 
     return dataset
