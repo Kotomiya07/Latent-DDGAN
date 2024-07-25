@@ -185,7 +185,9 @@ def train(rank, gpu, args):
     beta = np.linspace(-gamma, gamma, args.num_epoch+1)
     alpha = 1 - 1 / (1+np.exp(-beta))
 
-    print(netG)
+    if args.dataset in ['cifar10'] and args.class_conditional:
+        class_embedding = nn.Embedding(10, nz).to(device)
+
     for epoch in range(init_epoch, args.num_epoch + 1):
         #train_sampler.set_epoch(epoch)
         
@@ -206,7 +208,7 @@ def train(rank, gpu, args):
             """################# Change here: Encoder #################"""
             with torch.no_grad():
                 posterior = AutoEncoder.encode(x0)
-                real_data = posterior[0].detach()
+                real_data = posterior.sample().detach()
             #print("MIN:{}, MAX:{}".format(real_data.min(), real_data.max()))
             real_data = real_data / args.scale_factor #300.0  # [-1, 1]
             
@@ -217,6 +219,10 @@ def train(rank, gpu, args):
             # sample t
             t = torch.randint(0, args.num_timesteps,
                               (real_data.size(0),), device=device)
+            
+            if args.dataset in ['cifar10'] and args.class_conditional:
+                y = y.to(device)
+                y_emb = class_embedding(y)
 
             x_t, x_tp1 = q_sample_pairs(coeff, real_data, t)
             x_t.requires_grad = True
@@ -235,7 +241,10 @@ def train(rank, gpu, args):
 
             # train with fake
             latent_z = torch.randn(batch_size, nz, device=device)
-            x_0_predict = netG(x_tp1.detach(), t, latent_z)
+            if args.dataset in ['cifar10'] and args.class_conditional:
+                x_0_predict = netG(x_tp1.detach(), t, torch.cat([latent_z, y_emb], dim=1))
+            else:
+                x_0_predict = netG(x_tp1.detach(), t, latent_z)
             x_pos_sample = sample_posterior(pos_coeff, x_0_predict, x_tp1, t)
 
             output = netD(x_pos_sample, t, x_tp1.detach()).view(-1)
@@ -260,7 +269,10 @@ def train(rank, gpu, args):
             x_t, x_tp1 = q_sample_pairs(coeff, real_data, t)
 
             latent_z = torch.randn(batch_size, nz, device=device)
-            x_0_predict = netG(x_tp1.detach(), t, latent_z)
+            if args.dataset in ['cifar10'] and args.class_conditional:
+                x_0_predict = netG(x_tp1.detach(), t, torch.cat([latent_z, y_emb], dim=1))
+            else:
+                x_0_predict = netG(x_tp1.detach(), t, latent_z)
             x_pos_sample = sample_posterior(pos_coeff, x_0_predict, x_tp1, t)
 
             output = netD(x_pos_sample, t, x_tp1.detach()).view(-1)
@@ -306,8 +318,14 @@ def train(rank, gpu, args):
         if rank == 0:
             ########################################
             x_t_1 = torch.randn_like(posterior.sample())
-            fake_sample = sample_from_model(
-                pos_coeff, netG, args.num_timesteps, x_t_1, T, args)
+            if args.dataset in ['cifar10'] and args.class_conditional:
+                y = torch.arange(0, 10).repeat(x_t_1.size(0)//10 + 1)[:x_t_1.size(0)].to(device)
+                y_emb = class_embedding(y)
+                fake_sample = sample_from_model(
+                    pos_coeff, netG, args.num_timesteps, x_t_1, T, args, class_emb=y_emb)
+            else:
+                fake_sample = sample_from_model(
+                    pos_coeff, netG, args.num_timesteps, x_t_1, T, args)
 
             """############## CHANGE HERE: DECODER ##############"""
             fake_sample *= args.scale_factor #300
@@ -483,6 +501,8 @@ if __name__ == '__main__':
         '--AutoEncoder_ckpt', default='./autoencoder/weight/last_big.ckpt', help='path of weight for AntoEncoder')
     
     parser.add_argument("--sigmoid_learning", action="store_true")
+
+    parser.add_argument("--class_conditional", action="store_true", default=False)
     
     args = parser.parse_args()
 

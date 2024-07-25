@@ -157,7 +157,7 @@ def sample_posterior(coefficients, x_0, x_t, t):
     return sample_x_pos
 
 
-def sample_from_model(coefficients, generator, n_time, x_init, T, opt):
+def sample_from_model(coefficients, generator, n_time, x_init, T, opt, class_emb=None):
     x = x_init
     with torch.no_grad():
         for i in reversed(range(n_time)):
@@ -165,6 +165,8 @@ def sample_from_model(coefficients, generator, n_time, x_init, T, opt):
 
             t_time = t
             latent_z = torch.randn(x.size(0), opt.nz, device=x.device)
+            if class_emb is not None:
+                latent_z = torch.cat([latent_z, class_emb], dim=1)
             x_0 = generator(x, t_time, latent_z)
             x_new = sample_posterior(coefficients, x_0, x, t)
             x = x_new.detach()
