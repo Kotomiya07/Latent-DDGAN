@@ -124,7 +124,7 @@ def sample_and_test(args):
         print("Inference time: {:.2f}+/-{:.2f}ms".format(mean_syn, std_syn))
         exit(0)
 
-    
+
     if args.compute_fid:
         for i in range(iters_needed):
             with torch.no_grad():

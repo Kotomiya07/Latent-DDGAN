@@ -135,6 +135,7 @@ def get_args(args = []):
         '--AutoEncoder_ckpt', default='./autoencoder/weight/last_big.ckpt', help='path of weight for AntoEncoder')
     
     parser.add_argument("--sigmoid_learning", action="store_true")
+    parser.add_argument("--class_conditional", action="store_true", default=False)
     
     args = parser.parse_args(args)
 

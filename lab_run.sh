@@ -48,6 +48,31 @@ if [[ $MODE == train ]]; then
 			--rec_loss \
 			--sigmoid_learning \
 			--class_conditional
+	
+	elif [[ $DATASET == cifar10_feature ]]; then
+		python3 train_ldgan_feature.py --dataset cifar10 --exp atn32_g122_2block_d3_Recloss_SmL_256_feature --num_channels 4 --num_channels_dae 128 --num_timesteps 4 \
+			--num_res_blocks 2 --batch_size 512 --num_epoch 2000 --ngf 64 --nz 100 --z_emb_dim 256 --n_mlp 4 --embedding_type positional \
+			--use_ema --ema_decay 0.9999 --r1_gamma 0.02 --lr_d 2.5e-4 --lr_g 3.2e-4 --lazy_reg 15 \
+			--ch_mult 1 2 2 --save_content --datadir ./data/cifar-10 \
+			--master_port $MASTER_PORT --num_process_per_node $GPUS --save_ckpt_every 5 \
+			--current_resolution 16 --attn_resolutions 32 --num_disc_layers 3  --scale_factor 105.0 \
+			--save_content_every 1 \
+			--no_lr_decay \
+			--rec_loss \
+			--sigmoid_learning
+
+	elif [[ $DATASET == cifar10_cond_feature ]]; then
+		python3 train_ldgan_feature.py --dataset cifar10 --exp atn32_g122_2block_d3_Recloss_SmL_256_cond_feature --num_channels 4 --num_channels_dae 128 --num_timesteps 4 \
+			--num_res_blocks 2 --batch_size 512 --num_epoch 2000 --ngf 64 --nz 100 --z_emb_dim 256 --n_mlp 4 --embedding_type positional \
+			--use_ema --ema_decay 0.9999 --r1_gamma 0.02 --lr_d 2.5e-4 --lr_g 3.2e-4 --lazy_reg 15 \
+			--ch_mult 1 2 2 --save_content --datadir ./data/cifar-10 \
+			--master_port $MASTER_PORT --num_process_per_node $GPUS --save_ckpt_every 5 \
+			--current_resolution 16 --attn_resolutions 32 --num_disc_layers 3  --scale_factor 105.0 \
+			--save_content_every 1 \
+			--no_lr_decay \
+			--rec_loss \
+			--sigmoid_learning \
+			--class_conditional
 
 	elif [[ $DATASET == coco_256 ]]; then
 		python3 train_ldgan_lab.py --dataset coco --image_size 256 --exp g1222_128_2block_d4_attn16_nz50_256 --num_channels 3 --num_channels_dae 128 --ch_mult 1 2 2 2 --num_timesteps 2 \
@@ -63,24 +88,24 @@ if [[ $MODE == train ]]; then
 			--sigmoid_learning
 	
 	elif [[ $DATASET == coco_128 ]]; then
-		python3 train_ldgan_lab.py --dataset coco --image_size 128 --exp g1222_128_2block_d4_attn16_nz50_128 --num_channels 3 --num_channels_dae 128 --ch_mult 1 2 2 --num_timesteps 4 \
-			--num_res_blocks 2 --batch_size 32 --num_epoch 500 --ngf 64 --embedding_type positional --use_ema --ema_decay 0.999 --r1_gamma 2. \
+		python3 train_ldgan_lab_celeba.py --dataset coco --image_size 128 --exp g1222_128_2block_d4_attn16_nz50_128 --num_channels 3 --num_channels_dae 128 --ch_mult 1 2 2 --num_timesteps 4 \
+			--num_res_blocks 2 --batch_size 8 --num_epoch 500 --ngf 64 --embedding_type positional --use_ema --ema_decay 0.999 --r1_gamma 2. \
 			--nz 100 --z_emb_dim 256 --lr_d 1.0e-4 --lr_g 2e-4 --lazy_reg 10 --save_content --datadir data/coco \
 			--master_port $MASTER_PORT --num_process_per_node $GPUS \
 			--current_resolution 128 --attn_resolution 32 --num_disc_layers 3 --rec_loss \
 			--save_content_every 1 \
-			--AutoEncoder_config ./autoencoder/config/kl-f4.yaml \
-			--AutoEncoder_ckpt ./autoencoder/weight/kl-f4.ckpt \
+			--AutoEncoder_config ./autoencoder/config/vq-f4.yaml \
+			--AutoEncoder_ckpt ./autoencoder/weight/vq-f4.ckpt \
 			--scale_factor 60.0 \
 			--no_lr_decay \
 			--sigmoid_learning
 	
-	elif [[ $DATASET == coco_32 ]]; then
-		python3 train_ldgan_lab_celeba.py --dataset coco --image_size 32 --exp g1222_128_2block_d4_attn16_2step_SmL_200ep --num_channels 3 --num_channels_dae 128 --ch_mult 1 2 2 2 --num_timesteps 2 \
+	elif [[ $DATASET == coco_64 ]]; then
+		python3 train_ldgan_lab_celeba.py --dataset coco --image_size 64 --exp g1222_128_2block_d4_attn16_nz50_64 --num_channels 3 --num_channels_dae 128 --ch_mult 1 2 2 2 --num_timesteps 4 \
 			--num_res_blocks 2 --batch_size 32 --num_epoch 200 --ngf 64 --embedding_type positional --use_ema --ema_decay 0.999 --r1_gamma 2. \
-			--nz 100 --z_emb_dim 256 --lr_d 1.0e-4 --lr_g 2e-4 --lazy_reg 10 --save_content --datadir data/coco \
+			--nz 50 --z_emb_dim 256 --lr_d 1.0e-4 --lr_g 2e-4 --lazy_reg 10 --save_content --datadir data/coco \
 			--master_port $MASTER_PORT --num_process_per_node $GPUS \
-			--current_resolution 16 --attn_resolution 32 --num_disc_layers 4 --rec_loss \
+			--current_resolution 64 --attn_resolution 32 --num_disc_layers 4 --rec_loss \
 			--save_content_every 1 \
 			--AutoEncoder_config ./autoencoder/config/vq-f4.yaml \
 			--AutoEncoder_ckpt ./autoencoder/weight/vq-f4.ckpt \

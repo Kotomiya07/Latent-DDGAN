@@ -11,3 +11,4 @@ data/
 wandb/
 autoencoder/weight/
 .ipynb_checkpoints/
+features/

@@ -8,6 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import torchvision
+from torch.utils.data import Dataset, DataLoader
 from datasets_prep.dataset import create_dataset
 from diffusion import sample_from_model, sample_posterior, \
     q_sample_pairs, get_time_schedule, \
@@ -17,22 +18,11 @@ from diffusion import sample_from_model, sample_posterior, \
 from torch.multiprocessing import Process
 from utils import init_processes, copy_source, broadcast_params
 import yaml
+
 from ldm.util import instantiate_from_config
 from omegaconf import OmegaConf
 import wandb
-
-def load_model_from_config_old(config_path, ckpt):
-    print(f"Loading model from {ckpt}")
-    config = OmegaConf.load(config_path)
-    pl_sd = torch.load(ckpt, map_location="cpu")
-    #global_step = pl_sd["global_step"]
-    sd = pl_sd["state_dict"]
-    model = instantiate_from_config(config.model)
-    m, u = model.load_state_dict(sd, strict=False)
-    model = model.first_stage_model
-    model.cuda()
-    model.eval()
-    return model
+from diffusers.models import AutoencoderKL
 
 def load_model_from_config(config_path, ckpt):
     print(f"Loading model from {ckpt}")
@@ -45,7 +35,6 @@ def load_model_from_config(config_path, ckpt):
     model = model.first_stage_model
     model.cuda()
     model.eval()
-    del sd
     del m
     del u
     del pl_sd
@@ -61,6 +50,27 @@ def grad_penalty_call(args, D_real, x_t):
 
     grad_penalty = args.r1_gamma / 2 * grad_penalty
     grad_penalty.backward()
+
+class CustomDataset(Dataset):
+    def __init__(self, features_dir, labels_dir):
+        self.features_dir = features_dir
+        self.labels_dir = labels_dir
+
+        self.features_files = sorted(os.listdir(features_dir))
+        self.labels_files = sorted(os.listdir(labels_dir))
+
+    def __len__(self):
+        assert len(self.features_files) == len(self.labels_files), \
+            "Number of feature files and label files should be same"
+        return len(self.features_files)
+
+    def __getitem__(self, idx):
+        feature_file = self.features_files[idx]
+        label_file = self.labels_files[idx]
+
+        features = np.load(os.path.join(self.features_dir, feature_file))
+        labels = np.load(os.path.join(self.labels_dir, label_file))
+        return torch.from_numpy(features), torch.from_numpy(labels)
 
 
 # %%
@@ -78,26 +88,30 @@ def train(rank, gpu, args):
 
     nz = args.nz  # latent dimension
 
-    dataset = create_dataset(args)
-    train_sampler = torch.utils.data.distributed.DistributedSampler(dataset,
-                                                                    num_replicas=args.world_size,
-                                                                    rank=rank)
-    data_loader = torch.utils.data.DataLoader(dataset,
-                                              batch_size=batch_size,
-                                              shuffle=False,
-                                              num_workers=args.num_workers,
-                                              pin_memory=True,
-                                              sampler=train_sampler,
-                                              drop_last=True)
+    latent_size = args.image_size // 8
+
+    #dataset = create_dataset(args)
+    features_dir = f"{args.feature_path}/{args.dataset}/{args.image_size}_features"
+    labels_dir = f"{args.feature_path}/{args.dataset}/{args.image_size}_labels"
+    dataset = CustomDataset(features_dir, labels_dir)
+    #train_sampler = torch.utils.data.distributed.DistributedSampler(dataset,
+    #                                                                num_replicas=args.world_size,
+    #                                                                rank=rank)
+    data_loader = DataLoader(dataset,
+                            batch_size=batch_size,
+                            shuffle=True,
+                            num_workers=args.num_workers,
+                            pin_memory=True,
+                            drop_last=True)
     args.ori_image_size = args.image_size
-    args.image_size = args.current_resolution
+    args.image_size = latent_size
     G_NET_ZOO = {"normal": NCSNpp, "wavelet": WaveletNCSNpp}
     gen_net = G_NET_ZOO[args.net_type]
     disc_net = [Discriminator_small, Discriminator_large]
     print("GEN: {}, DISC: {}".format(gen_net, disc_net))
     netG = gen_net(args).to(device)
 
-    if args.dataset in ['cifar10', 'stl10', 'lsun', 'celeba', 'coco']:
+    if args.dataset in ['cifar10', 'stl10']:
         netD = disc_net[0](nc=2 * args.num_channels, ngf=args.ngf,
                            t_emb_dim=args.t_emb_dim,
                            act=nn.LeakyReLU(0.2), num_layers=args.num_disc_layers).to(device)
@@ -106,8 +120,8 @@ def train(rank, gpu, args):
                            t_emb_dim=args.t_emb_dim,
                            act=nn.LeakyReLU(0.2), num_layers=args.num_disc_layers).to(device)
 
-    broadcast_params(netG.parameters())
-    broadcast_params(netD.parameters())
+    #broadcast_params(netG.parameters())
+    #broadcast_params(netD.parameters())
 
     optimizerD = optim.Adam(filter(lambda p: p.requires_grad, netD.parameters(
     )), lr=args.lr_d, betas=(args.beta1, args.beta2))
@@ -123,9 +137,9 @@ def train(rank, gpu, args):
         optimizerD, args.num_epoch, eta_min=1e-5)
 
     # ddp
-    netG = nn.parallel.DistributedDataParallel(
-        netG, device_ids=[gpu], find_unused_parameters=True)
-    netD = nn.parallel.DistributedDataParallel(netD, device_ids=[gpu])
+    #netG = nn.parallel.DistributedDataParallel(
+    #    netG, device_ids=[gpu], find_unused_parameters=True)
+    #netD = nn.parallel.DistributedDataParallel(netD, device_ids=[gpu])
 
     """############### DELETE TO AVOID ERROR ###############"""
     # Wavelet Pooling
@@ -136,29 +150,29 @@ def train(rank, gpu, args):
     #    dwt = DWTForward(J=1, mode='zero', wave='haar').cuda()
     #    iwt = DWTInverse(mode='zero', wave='haar').cuda()
         
-    
     #load encoder and decoder
-    '''load encoder and decoder'''
-    config_path = args.AutoEncoder_config 
-    ckpt_path = args.AutoEncoder_ckpt 
+    #config_path = args.AutoEncoder_config 
+    #ckpt_path = args.AutoEncoder_ckpt 
     
-    if args.dataset in ['cifar10', 'stl10', 'coco']:
+    #if args.dataset in ['cifar10', 'stl10', 'coco']:
 
-        with open(config_path, 'r') as file:
-            config = yaml.safe_load(file)
+    #    with open(config_path, 'r') as file:
+    #        config = yaml.safe_load(file)
         
-        AutoEncoder = instantiate_from_config(config['model'])
+    #    AutoEncoder = instantiate_from_config(config['model'])
         
 
-        checkpoint = torch.load(ckpt_path, map_location=device)
-        AutoEncoder.load_state_dict(checkpoint['state_dict'])
-        AutoEncoder.eval()
-        AutoEncoder.to(device)
+    #    checkpoint = torch.load(ckpt_path, map_location=device)
+    #    AutoEncoder.load_state_dict(checkpoint['state_dict'])
+    #    AutoEncoder.eval()
+    #    AutoEncoder.to(device)
     
-    else:
-        AutoEncoder = load_model_from_config(config_path, ckpt_path)
+    #else:
+    #    AutoEncoder = load_model_from_config(config_path, ckpt_path)
     """############### END DELETING ###############"""
-    
+
+    AutoEncoder = AutoencoderKL.from_pretrained(f"stabilityai/sd-vae-ft-{args.vae}").to(device)
+
     num_levels = int(np.log2(args.ori_image_size // args.current_resolution))
 
     exp = args.exp
@@ -169,8 +183,7 @@ def train(rank, gpu, args):
         if not os.path.exists(exp_path):
             os.makedirs(exp_path)
             copy_source(__file__, exp_path)
-            shutil.copytree('score_sde/models',
-                            os.path.join(exp_path, 'score_sde/models'))
+            shutil.copytree('score_sde/models', os.path.join(exp_path, 'score_sde/models'))
 
     coeff = Diffusion_Coefficients(args, device)
     pos_coeff = Posterior_Coefficients(args, device)
@@ -195,18 +208,31 @@ def train(rank, gpu, args):
               .format(checkpoint['epoch']))
     else:
         global_step, epoch, init_epoch = 0, 0, 0
-        
+
     '''Sigmoid learning parameter'''
     gamma = 6
     beta = np.linspace(-gamma, gamma, args.num_epoch+1)
     alpha = 1 - 1 / (1+np.exp(-beta))
-    for epoch in range(init_epoch, args.num_epoch + 1):
-        train_sampler.set_epoch(epoch)
 
+    if args.dataset in ['cifar10'] and args.class_conditional:
+        class_embedding = nn.Embedding(10, nz).to(device)
+
+    nrow = 2
+    if args.batch_size >= 5:
+        nrow = 3
+    if args.batch_size >= 10:
+        nrow = 10
+
+    for epoch in range(init_epoch, args.num_epoch + 1):
+        #train_sampler.set_epoch(epoch)
+        
         start = torch.cuda.Event(enable_timing=True)
         end = torch.cuda.Event(enable_timing=True)
         start.record()
 
+        start_epoch = torch.cuda.Event(enable_timing=True)
+        end_epoch = torch.cuda.Event(enable_timing=True)
+        start_epoch.record()
         for iteration, (x, y) in enumerate(data_loader):
             for p in netD.parameters():
                 p.requires_grad = True
@@ -217,42 +243,51 @@ def train(rank, gpu, args):
 
             # sample from p(x_0)
             x0 = x.to(device, non_blocking=True)
+            x0 = x0.squeeze(dim=1)
 
             """################# Change here: Encoder #################"""
-
-            with torch.no_grad():
-                posterior = AutoEncoder.encode(x0)
-                #posterior = posterior[0]
-                #print(posterior)
-                #print(posterior.shape, posterior.max(), posterior.min())
-                real_data = posterior.detach()
-            real_data = real_data / args.scale_factor #300.0  # [-1, 1]
+            #with torch.no_grad():
+            #    posterior = AutoEncoder.encode(x0)
+            #    real_data = posterior.sample().detach()
             #print("MIN:{}, MAX:{}".format(real_data.min(), real_data.max()))
-            
-            assert -1 <= real_data.min() < 0
-            assert 0 < real_data.max() <= 1
+            #real_data = real_data / args.scale_factor #300.0  # [-1, 1]
+            real_data = x0
+            #assert -1 <= real_data.min() < 0
+            #assert 0 < real_data.max() <= 1
             """################# End change: Encoder #################"""
             # sample t
             t = torch.randint(0, args.num_timesteps,
                               (real_data.size(0),), device=device)
+            
+            if args.dataset in ['cifar10'] and args.class_conditional:
+                y = y.to(device)
+                y = y.squeeze(dim=1)
+                y_emb = class_embedding(y)
 
             x_t, x_tp1 = q_sample_pairs(coeff, real_data, t)
             x_t.requires_grad = True
 
+            """################# Save Sample #################"""
             if iteration % 10 == 0:
                 print(f"Epoch: {epoch}, Iteration: {iteration}")
             if iteration % 50 == 0:
-                x_t_1 = torch.randn_like(posterior)
-                fake_sample = sample_from_model(
-                    pos_coeff, netG, args.num_timesteps, x_t_1, T, args)
-                fake_sample *= args.scale_factor #300
+                x_t_1 = torch.randn_like(x0)
+                if args.dataset in ['cifar10'] and args.class_conditional:
+                    y = torch.arange(0, 10).repeat(x_t_1.size(0)//10 + 1)[:x_t_1.size(0)].to(device)
+                    y_emb = class_embedding(y)
+                    fake_sample = sample_from_model(
+                        pos_coeff, netG, args.num_timesteps, x_t_1, T, args, class_emb=y_emb)
+                else:
+                    fake_sample = sample_from_model(
+                        pos_coeff, netG, args.num_timesteps, x_t_1, T, args)
+                #fake_sample *= args.scale_factor #300
                 with torch.no_grad():
-                    fake_sample = AutoEncoder.decode(fake_sample)
+                    fake_sample = AutoEncoder.decode(fake_sample / 0.18215).sample
 
-                #rec_data = (torch.clamp(rec_data, -1, 1) + 1) / 2 
+                #rec_data = (torch.clamp(rec_data, -1, 1) + 1) / 2
                 fake_sample = (torch.clamp(fake_sample, -1, 1) + 1) / 2  # 0-1
                 torchvision.utils.save_image(fake_sample, os.path.join(
-                    exp_path, 'sample_discrete_epoch_{}.png'.format(epoch)))
+                    exp_path, 'sample_discrete_epoch_{}.png'.format(epoch)), nrow=nrow)
 
 
             # train with real
@@ -269,7 +304,10 @@ def train(rank, gpu, args):
 
             # train with fake
             latent_z = torch.randn(batch_size, nz, device=device)
-            x_0_predict = netG(x_tp1.detach(), t, latent_z)
+            if args.dataset in ['cifar10'] and args.class_conditional:
+                x_0_predict = netG(x_tp1.detach(), t, torch.cat([latent_z, y_emb], dim=1).detach())
+            else:
+                x_0_predict = netG(x_tp1.detach(), t, latent_z)
             x_pos_sample = sample_posterior(pos_coeff, x_0_predict, x_tp1, t)
 
             output = netD(x_pos_sample, t, x_tp1.detach()).view(-1)
@@ -294,7 +332,10 @@ def train(rank, gpu, args):
             x_t, x_tp1 = q_sample_pairs(coeff, real_data, t)
 
             latent_z = torch.randn(batch_size, nz, device=device)
-            x_0_predict = netG(x_tp1.detach(), t, latent_z)
+            if args.dataset in ['cifar10'] and args.class_conditional:
+                x_0_predict = netG(x_tp1.detach(), t, torch.cat([latent_z, y_emb], dim=1).detach())
+            else:
+                x_0_predict = netG(x_tp1.detach(), t, latent_z)
             x_pos_sample = sample_posterior(pos_coeff, x_0_predict, x_tp1, t)
 
             output = netD(x_pos_sample, t, x_tp1.detach()).view(-1)
@@ -309,8 +350,7 @@ def train(rank, gpu, args):
             elif args.rec_loss and not args.sigmoid_learning:
                 rec_loss = F.l1_loss(x_0_predict, real_data)
                 errG = errG + rec_loss
-
-
+            
 
             errG.backward()
             optimizerG.step()
@@ -330,10 +370,10 @@ def train(rank, gpu, args):
                     else:   
                         print('epoch {} iteration{}, G Loss: {}, D Loss: {}'.format(
                             epoch, iteration, errG.item(), errD.item()))
-                    wandb.log({"elapsed_time": elapsed_time / 1000})
+                    wandb.log({"G_loss_per_100iter": errG.item(), "D_loss_per_iter": errD.item(), "time_per_100iter": elapsed_time / 1000})
+                    start = torch.cuda.Event(enable_timing=True)
+                    end = torch.cuda.Event(enable_timing=True)
                     start.record()
-                    break
-            wandb.log({"iteration:": iteration, "G_loss": errG.item(), "D_loss": errD.item(), "alpha": alpha[epoch]})
 
         if not args.no_lr_decay:
 
@@ -341,49 +381,37 @@ def train(rank, gpu, args):
             schedulerD.step()
 
         if rank == 0:
-            if epoch % 10 == 0:
-                x_pos_sample = x_pos_sample[:, :3]
-                torchvision.utils.save_image(x_pos_sample, os.path.join(
-                    exp_path, 'xpos_epoch_{}.png'.format(epoch)), normalize=True)
-
+            end_epoch.record()
+            torch.cuda.synchronize()
+            time_per_epoch = start_epoch.elapsed_time(end_epoch)
+            wandb.log({"G_loss": errG.item(), "D_loss": errD.item(), "alpha": alpha[epoch], "time_per_epoch": time_per_epoch / 1000})
             ########################################
-            x_t_1 = torch.randn_like(posterior)
-            fake_sample = sample_from_model(
-                pos_coeff, netG, args.num_timesteps, x_t_1, T, args)
+            x_t_1 = torch.randn_like(x0)
+            if args.dataset in ['cifar10'] and args.class_conditional:
+                y = torch.arange(0, 10).repeat(x_t_1.size(0)//10 + 1)[:x_t_1.size(0)].to(device)
+                y_emb = class_embedding(y)
+                fake_sample = sample_from_model(
+                    pos_coeff, netG, args.num_timesteps, x_t_1, T, args, class_emb=y_emb)
+            else:
+                fake_sample = sample_from_model(
+                    pos_coeff, netG, args.num_timesteps, x_t_1, T, args)
 
             """############## CHANGE HERE: DECODER ##############"""
-            """
-            fake_sample *= 2
-            real_data *= 2
-            if not args.use_pytorch_wavelet:
-                fake_sample = iwt(
-                    fake_sample[:, :3], fake_sample[:, 3:6], fake_sample[:, 6:9], fake_sample[:, 9:12])
-                real_data = iwt(
-                    real_data[:, :3], real_data[:, 3:6], real_data[:, 6:9], real_data[:, 9:12])
-            else:
-                fake_sample = iwt((fake_sample[:, :3], [torch.stack(
-                    (fake_sample[:, 3:6], fake_sample[:, 6:9], fake_sample[:, 9:12]), dim=2)]))
-                real_data = iwt((real_data[:, :3], [torch.stack(
-                    (real_data[:, 3:6], real_data[:, 6:9], real_data[:, 9:12]), dim=2)]))
-            """
-            fake_sample *= args.scale_factor #300
-            real_data *= args.scale_factor #300
+            #fake_sample *= args.scale_factor #300
+            #real_data *= args.scale_factor #300
             with torch.no_grad():
-                fake_sample = AutoEncoder.decode(fake_sample)
-                real_data = AutoEncoder.decode(real_data)
-
-            #rec_data = (torch.clamp(rec_data, -1, 1) + 1) / 2 
+                fake_sample = AutoEncoder.decode(fake_sample / 0.18215).sample
+                real_data = AutoEncoder.decode(real_data / 0.18215).sample
+            
             fake_sample = (torch.clamp(fake_sample, -1, 1) + 1) / 2  # 0-1
             real_data = (torch.clamp(real_data, -1, 1) + 1) / 2  # 0-1 
             
             """############## END HERE: DECODER ##############"""
 
             torchvision.utils.save_image(fake_sample, os.path.join(
-                exp_path, 'sample_discrete_epoch_{}.png'.format(epoch)))
+                exp_path, 'sample_discrete_epoch_{}.png'.format(epoch)), nrow=nrow)
             torchvision.utils.save_image(
-                real_data, os.path.join(exp_path, 'real_data.png'))
-            #torchvision.utils.save_image(
-            #    rec_data, os.path.join(exp_path, 'rec_data.png'))
+                real_data, os.path.join(exp_path, 'real_data.png'),nrow=nrow)
 
             if args.save_content:
                 if epoch % args.save_content_every == 0:
@@ -535,15 +563,19 @@ if __name__ == '__main__':
     ##### My parameter #####
     parser.add_argument('--scale_factor', type=float, default=16.,
                         help='scale of Encoder output')
-    parser.add_argument("--img_rec_loss", action="store_true", default=True)
     parser.add_argument(
         '--AutoEncoder_config', default='./autoencoder/config/autoencoder_kl_f2_16x16x4_Cifar10_big.yaml', help='path of config file for AntoEncoder')
 
     parser.add_argument(
         '--AutoEncoder_ckpt', default='./autoencoder/weight/last_big.ckpt', help='path of weight for AntoEncoder')
-    parser.add_argument("--sigmoid_learning", action="store_true")
     
+    parser.add_argument("--sigmoid_learning", action="store_true")
+
     parser.add_argument("--class_conditional", action="store_true", default=False)
+    parser.add_argument("--feature_path", type=str, default="features")
+    parser.add_argument("--vae", type=str, choices=["ema", "mse"], default="ema")  # Choice doesn't affect training
+
+    
     args = parser.parse_args()
 
     args.world_size = args.num_proc_node * args.num_process_per_node
@@ -568,7 +600,7 @@ if __name__ == '__main__':
     else:
         print('starting in debug mode')
         wandb.init(
-            project="LDGAN",
+            project="LDGAN_feature",
             config={
                 "dataset": args.dataset,
                 "image_size": args.image_size,
@@ -598,4 +630,4 @@ if __name__ == '__main__':
                 "sigmoid_learning": args.sigmoid_learning,
             }
         )
-        init_processes(0, size, train, args)
+        train(0, 0, args)
