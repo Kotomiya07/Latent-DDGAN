@@ -104,7 +104,7 @@ def train(rank, gpu, args):
                             pin_memory=True,
                             drop_last=True)
     args.ori_image_size = args.image_size
-    args.image_size = latent_size
+    args.image_size = args.current_resolution
     G_NET_ZOO = {"normal": NCSNpp, "wavelet": WaveletNCSNpp}
     gen_net = G_NET_ZOO[args.net_type]
     disc_net = [Discriminator_small, Discriminator_large]
@@ -149,29 +149,29 @@ def train(rank, gpu, args):
     #else:
     #    dwt = DWTForward(J=1, mode='zero', wave='haar').cuda()
     #    iwt = DWTInverse(mode='zero', wave='haar').cuda()
-        
+
     #load encoder and decoder
-    #config_path = args.AutoEncoder_config 
-    #ckpt_path = args.AutoEncoder_ckpt 
-    
-    #if args.dataset in ['cifar10', 'stl10', 'coco']:
+    config_path = args.AutoEncoder_config
+    ckpt_path = args.AutoEncoder_ckpt
 
-    #    with open(config_path, 'r') as file:
-    #        config = yaml.safe_load(file)
-        
-    #    AutoEncoder = instantiate_from_config(config['model'])
-        
+    if args.dataset in ['cifar10', 'stl10', 'coco']:
 
-    #    checkpoint = torch.load(ckpt_path, map_location=device)
-    #    AutoEncoder.load_state_dict(checkpoint['state_dict'])
-    #    AutoEncoder.eval()
-    #    AutoEncoder.to(device)
-    
-    #else:
-    #    AutoEncoder = load_model_from_config(config_path, ckpt_path)
+        with open(config_path, 'r') as file:
+            config = yaml.safe_load(file)
+
+        AutoEncoder = instantiate_from_config(config['model'])
+
+
+        checkpoint = torch.load(ckpt_path, map_location=device)
+        AutoEncoder.load_state_dict(checkpoint['state_dict'])
+        AutoEncoder.eval()
+        AutoEncoder.to(device)
+
+    else:
+        AutoEncoder = load_model_from_config(config_path, ckpt_path)
     """############### END DELETING ###############"""
 
-    AutoEncoder = AutoencoderKL.from_pretrained(f"stabilityai/sd-vae-ft-{args.vae}").to(device)
+    #AutoEncoder = AutoencoderKL.from_pretrained(f"stabilityai/sd-vae-ft-{args.vae}").to(device)
 
     num_levels = int(np.log2(args.ori_image_size // args.current_resolution))
 
@@ -282,12 +282,20 @@ def train(rank, gpu, args):
                         pos_coeff, netG, args.num_timesteps, x_t_1, T, args)
                 #fake_sample *= args.scale_factor #300
                 with torch.no_grad():
-                    fake_sample = AutoEncoder.decode(fake_sample / 0.18215).sample
+                    fake_sample = AutoEncoder.decode(fake_sample)
+                    real = AutoEncoder.decode(real_data)
 
                 #rec_data = (torch.clamp(rec_data, -1, 1) + 1) / 2
+                torchvision.utils.save_image(fake_sample, os.path.join(
+                    exp_path, 'unclamp_sample_discrete_epoch_{}.png'.format(epoch)), nrow=nrow)
+                torchvision.utils.save_image(real, os.path.join(
+                    exp_path, 'unclamp_real_image.png'), nrow=nrow)
                 fake_sample = (torch.clamp(fake_sample, -1, 1) + 1) / 2  # 0-1
+                real = (torch.clamp(real, -1, 1) + 1) / 2  # 0-1
                 torchvision.utils.save_image(fake_sample, os.path.join(
                     exp_path, 'sample_discrete_epoch_{}.png'.format(epoch)), nrow=nrow)
+                torchvision.utils.save_image(real, os.path.join(
+                    exp_path, 'real_image.png'), nrow=nrow)
 
 
             # train with real
@@ -400,8 +408,8 @@ def train(rank, gpu, args):
             #fake_sample *= args.scale_factor #300
             #real_data *= args.scale_factor #300
             with torch.no_grad():
-                fake_sample = AutoEncoder.decode(fake_sample / 0.18215).sample
-                real_data = AutoEncoder.decode(real_data / 0.18215).sample
+                fake_sample = AutoEncoder.decode(fake_sample)
+                real_data = AutoEncoder.decode(real_data)
             
             fake_sample = (torch.clamp(fake_sample, -1, 1) + 1) / 2  # 0-1
             real_data = (torch.clamp(real_data, -1, 1) + 1) / 2  # 0-1 
