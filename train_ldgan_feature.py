@@ -286,10 +286,6 @@ def train(rank, gpu, args):
                     real = AutoEncoder.decode(real_data)
 
                 #rec_data = (torch.clamp(rec_data, -1, 1) + 1) / 2
-                torchvision.utils.save_image(fake_sample, os.path.join(
-                    exp_path, 'unclamp_sample_discrete_epoch_{}.png'.format(epoch)), nrow=nrow)
-                torchvision.utils.save_image(real, os.path.join(
-                    exp_path, 'unclamp_real_image.png'), nrow=nrow)
                 fake_sample = (torch.clamp(fake_sample, -1, 1) + 1) / 2  # 0-1
                 real = (torch.clamp(real, -1, 1) + 1) / 2  # 0-1
                 torchvision.utils.save_image(fake_sample, os.path.join(
@@ -378,7 +374,7 @@ def train(rank, gpu, args):
                     else:   
                         print('epoch {} iteration{}, G Loss: {}, D Loss: {}'.format(
                             epoch, iteration, errG.item(), errD.item()))
-                    wandb.log({"G_loss_per_100iter": errG.item(), "D_loss_per_iter": errD.item(), "time_per_100iter": elapsed_time / 1000})
+                    wandb.log({"G_loss_per_100iter": errG.item(), "D_loss_per_100iter": errD.item(), "time_per_100iter": elapsed_time / 1000})
                     start = torch.cuda.Event(enable_timing=True)
                     end = torch.cuda.Event(enable_timing=True)
                     start.record()

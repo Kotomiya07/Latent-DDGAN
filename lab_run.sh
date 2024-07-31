@@ -167,6 +167,16 @@ else
 			--batch_size 256 \
 			--compute_fid --real_img_dir pytorch_fid/cifar10_train_stat.npy 
 
+	elif [[ $DATASET == cifar10_cond ]]; then
+		python3 test_ldgan.py --dataset cifar10 --exp cifar-10-cond --num_channels 4 --num_channels_dae 128 --num_timesteps 4 \
+			--num_res_blocks 2 --nz 100 --z_emb_dim 256 --n_mlp 4 --ch_mult 1 2 2 --epoch_id 2000 \
+			--image_size 32 --current_resolution 16 --attn_resolutions 32 \
+			--scale_factor 105.0 \
+			--AutoEncoder_config autoencoder/config/cifar10_16x16x4.yaml \
+			--AutoEncoder_ckpt autoencoder/weight/16x16x4_551.ckpt \
+			--batch_size 256 \
+			--compute_fid --real_img_dir pytorch_fid/cifar10_train_stat.npy
+
 	elif [[ $DATASET == celeba_256 ]]; then
 		python3 test_ldgan_celeba.py --dataset celeba_256 --image_size 256 --exp g1222_128_2block_d4_attn16_2step_SmL --num_channels 3 --num_channels_dae 128 \
 			--nz 100 --z_emb_dim 256  --ch_mult 1 2 2 2  --num_timesteps 2 --num_res_blocks 2  --epoch_id 725 \
