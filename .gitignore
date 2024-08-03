@@ -12,3 +12,4 @@ wandb/
 autoencoder/weight/
 .ipynb_checkpoints/
 features/
+wddgan_generated_samples/

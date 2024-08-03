@@ -57,6 +57,7 @@ def sample_and_test(args):
     #load encoder and decoder
     from ldm.util import instantiate_from_config
     import yaml
+    import torch.nn as nn
     config_path = args.AutoEncoder_config#'autoencoder/config/autoencoder_kl_f2_16x16x4_Cifar10_small.yaml'#'./autoencoder/config/autoencoder_kl_f2_16x16x2_Cifar10.yaml'
     with open(config_path, 'r') as file:
         config = yaml.safe_load(file)
@@ -85,6 +86,9 @@ def sample_and_test(args):
     save_dir = "./wddgan_generated_samples/{}".format(args.dataset)
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
+    
+    if args.dataset in ['cifar10'] and args.class_conditional:
+        class_embedding = nn.Embedding(10, args.nz).to(device)
 
     if args.measure_time:
         x_t_1 = torch.randn(args.batch_size, args.num_channels,
@@ -130,8 +134,14 @@ def sample_and_test(args):
             with torch.no_grad():
                 x_t_1 = torch.randn(
                     args.batch_size, args.num_channels, args.image_size, args.image_size).to(device)
-                fake_sample = sample_from_model(
-                    pos_coeff, netG, args.num_timesteps, x_t_1, T, args)
+                if args.dataset in ['cifar10'] and args.class_conditional:
+                    y = torch.arange(0, 10).repeat(x_t_1.size(0)//10 + 1)[:x_t_1.size(0)].to(device)
+                    y_emb = class_embedding(y)
+                    fake_sample = sample_from_model(
+                        pos_coeff, netG, args.num_timesteps, x_t_1, T, args, class_emb=y_emb)
+                else:
+                    fake_sample = sample_from_model(
+                        pos_coeff, netG, args.num_timesteps, x_t_1, T, args)
 
                 """########### CHANGING ###########"""
                 fake_sample *= args.scale_factor #300
@@ -279,7 +289,7 @@ if __name__ == '__main__':
 
     parser.add_argument(
         '--AutoEncoder_ckpt', default='./autoencoder/weight/last_big.ckpt', help='path of weight for AntoEncoder')
-    
+    parser.add_argument('--class_conditional', action='store_true', default=False)
     args = parser.parse_args()
 
     sample_and_test(args)

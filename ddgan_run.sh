@@ -19,10 +19,10 @@ echo $DATASET $MODE $GPUS
 
 # ----------------- LDDGAN -----------
 if [[ $MODE == train ]]; then
-	echo "==> Training LDDGAN"
+	echo "==> Training DDGAN"
 
 	if [[ $DATASET == cifar10 ]]; then
-		python3 train_ldgan_lab.py --dataset cifar10 --exp atn32_g122_2block_d3_Recloss_SmL_256 --num_channels 4 --num_channels_dae 128 --num_timesteps 4 \
+		python3 train_ddgan.py --dataset cifar10 --exp atn32_g122_2block_d3_Recloss_SmL_256 --num_channels 4 --num_channels_dae 128 --num_timesteps 4 \
 			--num_res_blocks 2 --batch_size 256 --num_epoch 2000 --ngf 64 --nz 100 --z_emb_dim 256 --n_mlp 4 --embedding_type positional \
 			--use_ema --ema_decay 0.9999 --r1_gamma 0.02 --lr_d 1.25e-4 --lr_g 1.6e-4 --lazy_reg 15 \
 			--ch_mult 1 2 2 --save_content --datadir ./data/cifar-10 \
@@ -35,7 +35,7 @@ if [[ $MODE == train ]]; then
 			--sigmoid_learning
 
 	elif [[ $DATASET == cifar10_cond ]]; then
-		python3 train_ldgan_lab.py --dataset cifar10 --exp atn32_g122_2block_d3_Recloss_SmL_256_cond --num_channels 4 --num_channels_dae 128 --num_timesteps 4 \
+		python3 train_ddgan.py --dataset cifar10 --exp atn32_g122_2block_d3_Recloss_SmL_256_cond --num_channels 4 --num_channels_dae 128 --num_timesteps 4 \
 			--num_res_blocks 2 --batch_size 256 --num_epoch 2000 --ngf 64 --nz 100 --z_emb_dim 256 --n_mlp 4 --embedding_type positional \
 			--use_ema --ema_decay 0.9999 --r1_gamma 0.02 --lr_d 1.25e-4 --lr_g 1.6e-4 --lazy_reg 15 \
 			--ch_mult 1 2 2 --save_content --datadir ./data/cifar-10 \
@@ -48,51 +48,24 @@ if [[ $MODE == train ]]; then
 			--rec_loss \
 			--sigmoid_learning \
 			--class_conditional
-	
-	elif [[ $DATASET == cifar10_feature ]]; then
-		python3 train_ldgan_feature.py --dataset cifar10 --exp atn32_g122_2block_d3_Recloss_SmL_nz50_256_feature --num_channels 3 --num_channels_dae 128 --num_timesteps 4 \
-			--num_res_blocks 2 --batch_size 256 --num_epoch 2000 --ngf 64 --nz 50 --z_emb_dim 256 --n_mlp 4 --embedding_type positional \
-			--use_ema --ema_decay 0.9999 --r1_gamma 0.02 --lr_d 1.25e-4 --lr_g 1.6e-4 --lazy_reg 15 \
-			--ch_mult 1 2 2 --save_content --datadir ./data/cifar-10 \
-			--master_port $MASTER_PORT --num_process_per_node $GPUS --save_ckpt_every 5 \
-			--current_resolution 8 --attn_resolutions 32 --num_disc_layers 3  --scale_factor 105.0 \
+
+	elif [[ $DATASET == coco_256 ]]; then
+        python3 train_ddgan.py --dataset coco --image_size 256 --exp ddgan_coco_256 --num_channels 3 --num_channels_dae 128 --ch_mult 1 2 2 2 --num_timesteps 4 \
+			--num_res_blocks 2 --batch_size 4 --num_epoch 500 --ngf 64 --embedding_type positional --use_ema --ema_decay 0.999 --r1_gamma 2. \
+			--nz 50 --z_emb_dim 256 --lr_d 1.0e-4 --lr_g 2e-4 --lazy_reg 10 --save_content --datadir data/coco \
+			--master_port $MASTER_PORT --num_process_per_node $GPUS \
+			--current_resolution 256 --attn_resolution 32 --num_disc_layers 3 --rec_loss \
 			--save_content_every 1 \
 			--AutoEncoder_config ./autoencoder/config/vq-f4.yaml \
 			--AutoEncoder_ckpt ./autoencoder/weight/vq-f4.ckpt \
-			--no_lr_decay \
-			--rec_loss \
-			--sigmoid_learning
-
-	elif [[ $DATASET == cifar10_cond_feature ]]; then
-		python3 train_ldgan_feature.py --dataset cifar10 --exp atn32_g122_2block_d3_Recloss_SmL_nz50_256_cond_feature --num_channels 4 --num_channels_dae 128 --num_timesteps 4 \
-			--num_res_blocks 2 --batch_size 256 --num_epoch 2000 --ngf 64 --nz 50 --z_emb_dim 256 --n_mlp 4 --embedding_type positional \
-			--use_ema --ema_decay 0.9999 --r1_gamma 0.02 --lr_d 1.25e-4 --lr_g 1.6e-4 --lazy_reg 15 \
-			--ch_mult 1 2 2 --save_content --datadir ./data/cifar-10 \
-			--master_port $MASTER_PORT --num_process_per_node $GPUS --save_ckpt_every 5 \
-			--current_resolution 16 --attn_resolutions 32 --num_disc_layers 3  --scale_factor 105.0 \
-			--save_content_every 1 \
-			--no_lr_decay \
-			--rec_loss \
-			--sigmoid_learning \
-			--class_conditional
-
-	elif [[ $DATASET == coco_256 ]]; then
-		python3 train_ldgan_lab.py --dataset coco --image_size 256 --exp g1222_128_2block_d4_attn16_nz50_256 --num_channels 3 --num_channels_dae 128 --ch_mult 1 2 2 2 --num_timesteps 2 \
-			--num_res_blocks 2 --batch_size 8 --num_epoch 500 --ngf 64 --embedding_type positional --use_ema --ema_decay 0.999 --r1_gamma 2. \
-			--nz 100 --z_emb_dim 256 --lr_d 1.0e-4 --lr_g 2e-4 --lazy_reg 10 --save_content --datadir data/coco \
-			--master_port $MASTER_PORT --num_process_per_node $GPUS \
-			--current_resolution 256 --attn_resolution 16 --num_disc_layers 4 --rec_loss \
-			--save_content_every 1 \
-			--AutoEncoder_config ./autoencoder/config/COCO_config.yaml \
-			--AutoEncoder_ckpt ./autoencoder/weight/kl-f4.ckpt \
-			--scale_factor 6.0 \
+			--scale_factor 60.0 \
 			--no_lr_decay \
 			--sigmoid_learning
-	
+
 	elif [[ $DATASET == coco_128 ]]; then
-		python3 train_ldgan_lab_celeba.py --dataset coco --image_size 128 --exp g1222_128_2block_d4_attn16_nz50_128 --num_channels 3 --num_channels_dae 128 --ch_mult 1 2 2 --num_timesteps 4 \
+		python3 train_ddgan.py --dataset coco --image_size 128 --exp ddgan_coco_128 --num_channels 3 --num_channels_dae 128 --ch_mult 1 2 2 2 --num_timesteps 4 \
 			--num_res_blocks 2 --batch_size 8 --num_epoch 500 --ngf 64 --embedding_type positional --use_ema --ema_decay 0.999 --r1_gamma 2. \
-			--nz 100 --z_emb_dim 256 --lr_d 1.0e-4 --lr_g 2e-4 --lazy_reg 10 --save_content --datadir data/coco \
+			--nz 50 --z_emb_dim 256 --lr_d 1.0e-4 --lr_g 2e-4 --lazy_reg 10 --save_content --datadir data/coco \
 			--master_port $MASTER_PORT --num_process_per_node $GPUS \
 			--current_resolution 128 --attn_resolution 32 --num_disc_layers 3 --rec_loss \
 			--save_content_every 1 \
@@ -101,32 +74,19 @@ if [[ $MODE == train ]]; then
 			--scale_factor 60.0 \
 			--no_lr_decay \
 			--sigmoid_learning
-	
-	elif [[ $DATASET == coco_128_feature ]]; then
-		python3 train_ldgan_feature.py --dataset coco --image_size 128 --exp g1222_128_2block_d4_attn16_nz50_128_feature --num_channels 3 --num_channels_dae 128 --ch_mult 1 2 2 2 --num_timesteps 4 \
-			--num_res_blocks 2 --batch_size 8 --num_epoch 500 --ngf 64 --embedding_type positional --use_ema --ema_decay 0.999 --r1_gamma 2. \
+
+	elif [[ $DATASET == coco_64 ]]; then
+		python3 train_ddgan.py --dataset coco --image_size 128 --exp ddgan_coco_64 --num_channels 3 --num_channels_dae 128 --ch_mult 1 2 2 2 --num_timesteps 4 \
+			--num_res_blocks 2 --batch_size 16 --num_epoch 500 --ngf 64 --embedding_type positional --use_ema --ema_decay 0.999 --r1_gamma 2. \
 			--nz 50 --z_emb_dim 256 --lr_d 1.0e-4 --lr_g 2e-4 --lazy_reg 10 --save_content --datadir data/coco \
 			--master_port $MASTER_PORT --num_process_per_node $GPUS \
-			--current_resolution 32 --attn_resolution 32 --num_disc_layers 3 --rec_loss \
+			--current_resolution 64 --attn_resolution 32 --num_disc_layers 3 --rec_loss \
 			--save_content_every 1 \
 			--AutoEncoder_config ./autoencoder/config/vq-f4.yaml \
 			--AutoEncoder_ckpt ./autoencoder/weight/vq-f4.ckpt \
 			--scale_factor 60.0 \
 			--no_lr_decay \
 			--sigmoid_learning
-	
-	elif [[ $DATASET == coco_64 ]]; then
-		python3 train_ldgan_lab_celeba.py --dataset coco --image_size 64 --exp g1222_128_2block_d4_attn16_nz50_64 --num_channels 3 --num_channels_dae 128 --ch_mult 1 2 2 2 --num_timesteps 4 \
-			--num_res_blocks 2 --batch_size 32 --num_epoch 200 --ngf 64 --embedding_type positional --use_ema --ema_decay 0.999 --r1_gamma 2. \
-			--nz 50 --z_emb_dim 256 --lr_d 1.0e-4 --lr_g 2e-4 --lazy_reg 10 --save_content --datadir data/coco \
-			--master_port $MASTER_PORT --num_process_per_node $GPUS \
-			--current_resolution 64 --attn_resolution 32 --num_disc_layers 4 --rec_loss \
-			--save_content_every 1 \
-			--AutoEncoder_config ./autoencoder/config/vq-f4.yaml \
-			--AutoEncoder_ckpt ./autoencoder/weight/vq-f4.ckpt \
-			--scale_factor 6.0 \
-			--no_lr_decay \
-			--sigmoid_learning 
 
 	elif [[ $DATASET == celeba_256 ]]; then
 		python3 train_ldgan_celeba.py --dataset celeba_256 --image_size 256 --exp g1222_128_2block_d4_attn16_2step_SmL_500ep --num_channels 3 --num_channels_dae 128 --ch_mult 1 2 2 2 --num_timesteps 2 \
@@ -175,7 +135,8 @@ else
 			--AutoEncoder_config autoencoder/config/cifar10_16x16x4.yaml \
 			--AutoEncoder_ckpt autoencoder/weight/16x16x4_551.ckpt \
 			--batch_size 256 \
-			--compute_fid --real_img_dir pytorch_fid/cifar10_train_stat.npy
+			--compute_fid --real_img_dir pytorch_fid/cifar10_train_stat.npy \
+			--class_conditional
 
 	elif [[ $DATASET == celeba_256 ]]; then
 		python3 test_ldgan_celeba.py --dataset celeba_256 --image_size 256 --exp g1222_128_2block_d4_attn16_2step_SmL --num_channels 3 --num_channels_dae 128 \
