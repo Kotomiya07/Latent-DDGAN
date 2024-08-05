@@ -1,4 +1,5 @@
 ##### Table of contents
+
 1. [Installation](#Installation)
 2. [Dataset preparation](#Dataset-preparation)
 3. [How to run](#How-to-run)
@@ -12,6 +13,7 @@
 LDDGAN is a novel diffusion scheme. Experimental results on CelebA-HQ, CIFAR-10, LSUN-Church, and STL-10 datasets show that LDDGAN provides state-of-the-art training and inference speed, which serves as a stepping-stone to offering real-time and high-fidelity diffusion models.
 
 Details of the model architecture and experimental results can be found in IEEE Access paper (will be updated soon).
+
 ```bibtex
 @inproceedings{trinhldgan,
  title={Latent Denoising Diffusion GANs: Faster sampling, Higher image quality},
@@ -20,31 +22,40 @@ Details of the model architecture and experimental results can be found in IEEE 
  year={2024}
 }
 ```
- **Please CITE** our paper whenever this repository is used to help produce published results or incorporated into other software.
 
-## Installation ##
+**Please CITE** our paper whenever this repository is used to help produce published results or incorporated into other software.
+
+## Installation
+
 Python `3.7.13` and Pytorch `1.10.0` are used in this implementation.
 
 It is recommended to create `conda` env from our provided [environment.yml](./environment.yml):
+
 ```
 conda env create -f environment.yml
 conda activate ldgan
 ```
 
 Or you can install neccessary libraries as follows:
+
 ```bash
 pip install -r requirements.txt
 ```
-## Autoencoder ##
-Download using links about and put them in `autoencoder/weight`
-## Dataset preparation ##
-We trained on four datasets, including CIFAR10, LSUN Church Outdoor 256 and CelebA HQ 256. 
 
-For CIFAR10 and STL10, they will be automatically downloaded in the first time execution. 
+## Autoencoder
+
+Download using links about and put them in `autoencoder/weight`
+
+## Dataset preparation
+
+We trained on four datasets, including CIFAR10, LSUN Church Outdoor 256 and CelebA HQ 256.
+
+For CIFAR10 and STL10, they will be automatically downloaded in the first time execution.
 
 For CelebA HQ (256) and LSUN, please check out [here](https://github.com/NVlabs/NVAE#set-up-file-paths-and-data) for dataset preparation.
 
 Once a dataset is downloaded, please put it in `data/` directory as follows:
+
 ```
 data/
 ├── celeba
@@ -52,22 +63,28 @@ data/
 └── lsun
 ```
 
-## How to run ##
+## How to run
+
 We provide a bash script for our experiments on different datasets. The syntax is following:
+
 ```
 bash run.sh <DATASET> <MODE> <#GPUS>
 ```
-where: 
+
+where:
+
 - `<DATASET>`: `cifar10`, `stl10`, `celeba_256`, `celeba_512`, `celeba_1024`, and `lsun`.
 - `<MODE>`: `train` and `test`.
 - `<#GPUS>`: the number of gpus (e.g. 1, 2, 4, 8).
 
-Note, please set argument `--exp` correspondingly for both `train` and `test` mode. All of detailed configurations are well set in [run.sh](./run.sh). 
+Note, please set argument `--exp` correspondingly for both `train` and `test` mode. All of detailed configurations are well set in [run.sh](./run.sh).
 
 **GPU allocation**: Our work is experimented on NVIDIA 40GB A100 GPUs. For `train` mode, we use a single GPU for CIFAR10 and STL10, 2 GPUs for CelebA-HQ 256, 4 GPUs for LSUN, and 8 GPUs for CelebA-HQ 512 & 1024. For `test` mode, only a single GPU is required for all experiments.
 
-## Results ##
+## Results
+
 Model performance and pretrained checkpoints are provided as below:
+
 <table>
   <tr>
     <th>Model</th>
@@ -83,7 +100,7 @@ Model performance and pretrained checkpoints are provided as below:
     <td>0.58</td>
     <td>0.08</td>
     <td><a href="https://www.dropbox.com/scl/fi/w6d95umfj6rz18c6427n3/netG_950.pth?rlkey=z821eqci0sl2k7gi63wl2zdwv&st=pnzrfyz3&dl=0">Here</a></td>
-    <td><a href="https://www.dropbox.com/scl/fi/p6p4dk4znbomvpwlwvlii/16x16x4_551.ckpt?rlkey=qfocqn8ko1g215iqgrose0vbz&st=6luvy40c&dl=0">Here</a></td>
+    <td><a href="https://www.dropbox.com/scl/fi/p6p4dk4znbomvpwlwvlii/kl-f2.ckpt?rlkey=qfocqn8ko1g215iqgrose0vbz&st=6luvy40c&dl=0">Here</a></td>
   </tr>
   <tr>
     <td>CelebA-HQ (256 x 256) </td>
@@ -91,7 +108,7 @@ Model performance and pretrained checkpoints are provided as below:
     <td>0.40</td>
     <td>0.55</td>
     <td><a href="https://www.dropbox.com/scl/fi/w6d95umfj6rz18c6427n3/netG_950.pth?rlkey=z821eqci0sl2k7gi63wl2zdwv&st=pnzrfyz3&dl=0">Here</a></td>
-    <td><a href="https://www.dropbox.com/scl/fi/p6p4dk4znbomvpwlwvlii/16x16x4_551.ckpt?rlkey=qfocqn8ko1g215iqgrose0vbz&st=6luvy40c&dl=0">Here</a></td>
+    <td><a href="https://www.dropbox.com/scl/fi/p6p4dk4znbomvpwlwvlii/kl-f2.ckpt?rlkey=qfocqn8ko1g215iqgrose0vbz&st=6luvy40c&dl=0">Here</a></td>
   </tr>
   <tr>
     <td>LSUN Church</td>
@@ -99,7 +116,7 @@ Model performance and pretrained checkpoints are provided as below:
     <td>0.42</td>
     <td>1.02</td>
     <td><a href="https://www.dropbox.com/scl/fi/w6d95umfj6rz18c6427n3/netG_950.pth?rlkey=z821eqci0sl2k7gi63wl2zdwv&st=pnzrfyz3&dl=0">Here</a></td>
-    <td><a href="https://www.dropbox.com/scl/fi/p6p4dk4znbomvpwlwvlii/16x16x4_551.ckpt?rlkey=qfocqn8ko1g215iqgrose0vbz&st=6luvy40c&dl=0">Here</a></td>
+    <td><a href="https://www.dropbox.com/scl/fi/p6p4dk4znbomvpwlwvlii/kl-f2.ckpt?rlkey=qfocqn8ko1g215iqgrose0vbz&st=6luvy40c&dl=0">Here</a></td>
   </tr>
 </table>
 
@@ -107,18 +124,24 @@ Inference time is computed over 300 trials on a single NVIDIA A5000 GPU for a ba
 
 Downloaded pre-trained models should be put in `saved_info/ld_gan/<DATASET>/<EXP>` directory where `<DATASET>` is defined in [How to run](#how-to-run) section and `<EXP>` corresponds to the folder name of pre-trained checkpoints.
 
-## Evaluation ##
-### Inference ###
+## Evaluation
+
+### Inference
+
 Samples can be generated by calling [run.sh](./run.sh) with `test` mode.
 
-### FID ###
-To compute fid of pretrained models at a specific epoch, we can add additional arguments including ```--compute_fid``` and ```--real_img_dir /path/to/real/images``` of the corresponding experiments in [run.sh](./run.sh).
+### FID
 
-### Recall ###
+To compute fid of pretrained models at a specific epoch, we can add additional arguments including `--compute_fid` and `--real_img_dir /path/to/real/images` of the corresponding experiments in [run.sh](./run.sh).
+
+### Recall
+
 We adopt the official Pytorch implementation of [StyleGAN2-ADA](https://github.com/NVlabs/stylegan2-ada-pytorch.git) to compute Recall of generated samples.
 
 ## Acknowledgments
+
 Thanks to Xiao et al for releasing their official implementation of the [DDGAN](https://github.com/NVlabs/denoising-diffusion-gan.git) paper.
 
-## Contacts ##
+## Contacts
+
 If you have any problems, please open an issue in this repository or ping an email to [luan.trinh.t@gmail.com](mailto:luan.trinh.t@gmail.com).

@@ -29,8 +29,8 @@ if [[ $MODE == train ]]; then
 			--master_port $MASTER_PORT --num_process_per_node $GPUS --save_ckpt_every 5 \
 			--current_resolution 16 --attn_resolutions 32 --num_disc_layers 3  --scale_factor 105.0 \
 			--no_lr_decay \
-			--AutoEncoder_config autoencoder/config/cifar10_16x16x4.yaml \
-			--AutoEncoder_ckpt autoencoder/weight/16x16x4_551.ckpt \
+			--AutoEncoder_config autoencoder/config/kl-f2.yaml \
+			--AutoEncoder_ckpt autoencoder/weight/kl-f2.ckpt \
 			--rec_loss \
 			--sigmoid_learning
 
@@ -43,8 +43,8 @@ if [[ $MODE == train ]]; then
 			--current_resolution 16 --attn_resolutions 32 --num_disc_layers 3  --scale_factor 105.0 \
 			--save_content_every 1 \
 			--no_lr_decay \
-			--AutoEncoder_config autoencoder/config/cifar10_16x16x4.yaml \
-			--AutoEncoder_ckpt autoencoder/weight/16x16x4_551.ckpt \
+			--AutoEncoder_config autoencoder/config/kl-f2.yaml \
+			--AutoEncoder_ckpt autoencoder/weight/kl-f2.ckpt \
 			--rec_loss \
 			--sigmoid_learning \
 			--class_conditional
@@ -122,8 +122,8 @@ else
 			--num_res_blocks 2 --nz 50 --z_emb_dim 256 --n_mlp 4 --ch_mult 1 2 2 --epoch_id 950 \
 			--image_size 32 --current_resolution 16 --attn_resolutions 32 \
 			--scale_factor 105.0 \
-			--AutoEncoder_config autoencoder/config/cifar10_16x16x4.yaml \
-			--AutoEncoder_ckpt autoencoder/weight/16x16x4_551.ckpt \
+			--AutoEncoder_config autoencoder/config/kl-f2.yaml \
+			--AutoEncoder_ckpt autoencoder/weight/kl-f2.ckpt \
 			--batch_size 256 \
 			--compute_fid --real_img_dir pytorch_fid/cifar10_train_stat.npy 
 
@@ -132,8 +132,8 @@ else
 			--num_res_blocks 2 --nz 100 --z_emb_dim 256 --n_mlp 4 --ch_mult 1 2 2 --epoch_id 2000 \
 			--image_size 32 --current_resolution 16 --attn_resolutions 32 \
 			--scale_factor 105.0 \
-			--AutoEncoder_config autoencoder/config/cifar10_16x16x4.yaml \
-			--AutoEncoder_ckpt autoencoder/weight/16x16x4_551.ckpt \
+			--AutoEncoder_config autoencoder/config/kl-f2.yaml \
+			--AutoEncoder_ckpt autoencoder/weight/kl-f2.ckpt \
 			--batch_size 256 \
 			--compute_fid --real_img_dir pytorch_fid/cifar10_train_stat.npy \
 			--class_conditional
