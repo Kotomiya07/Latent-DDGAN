@@ -64,9 +64,10 @@ def main(args):
         with torch.no_grad():
             # Map input images to latent space + normalize latents:
             x = vae.encode(x)
-            y = text_encoder(y[0])
+            if args.dataset == "coco":
+                y = text_encoder(y[0])
 
-        x = x.detach().cpu().numpy()    # (1, 4, 32, 32)
+        x = x.sample().detach().cpu().numpy()    # (1, 4, 32, 32)
         np.save(f'{args.features_path}/{args.dataset}/{args.image_size}_features/{train_steps}.npy', x)
 
         y = y.detach().cpu().numpy()    # (1,)
@@ -85,9 +86,9 @@ if __name__ == "__main__":
     parser.add_argument("--vae", type=str, choices=["ema", "mse"], default="ema")
     parser.add_argument("--num_workers", type=int, default=4)
     parser.add_argument(
-        '--AutoEncoder_config', default='./autoencoder/config/vq-f4.yaml', help='path of config file for AntoEncoder')
+        '--AutoEncoder_config', default='./autoencoder/config/kl-f2.yaml', help='path of config file for AntoEncoder')
     parser.add_argument(
-        '--AutoEncoder_ckpt', default='./autoencoder/weight/vq-f4.ckpt', help='path of weight for AntoEncoder')
+        '--AutoEncoder_ckpt', default='./autoencoder/weight/kl-f2.ckpt', help='path of weight for AntoEncoder')
 
     args = parser.parse_args()
     main(args)
